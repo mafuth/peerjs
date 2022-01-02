@@ -21,6 +21,9 @@
     .answer-call{
         display:none;
     }
+    .chat-img{
+        width:50%;
+    }
 </style>
 </head>
 <body>
@@ -53,20 +56,29 @@
             <button class="btn btn-primary answer-call mt-10">Answer Video Call</button>
         </div>
         <div class="col-6">
-            <div class="input-group mb-3">
-                <div class="input-group-prepend">
-                    <span class="input-group-text" id="basic-addon1">Message</span>
+            <div class="row">
+                <div class="col-6">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control message" placeholder="Type your message">
+                    </div>
+                    <button class="btn btn-primary send-msg">Send</button>
                 </div>
-                <input type="text" class="form-control message" placeholder="Type your message">
-            </div>
-            <button class="btn btn-primary send-msg">Send</button>
+                <div class="col-6">
+                    <div class="input-group mb-3 mt-10">
+                        <input type="file" id="image-upload" accept="image/*">
+                    </div>
+                    <button class="btn btn-primary send-image">Send</button>
+                </div>
+            <div>
             <div class="chat mt-10"></div>
         </div>
     </div>
 </div>
 </body>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js" integrity="sha256-/H4YS+7aYb9kJ5OKhFYPUjSJdrtV6AeyJOtTkw6X72o=" crossorigin="anonymous"></script>
 <script src="/peerjs.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
@@ -75,7 +87,28 @@ var peer = "";
 var conn =  "";
 var me = "";
 var other = "";
+var b64 = "";
 
+function encryptMsg(msg,key){
+    return btoa(CryptoJS.AES.encrypt(msg,key));
+}
+function decryptMsg(msg,key){
+    return CryptoJS.AES.decrypt(atob(msg), key).toString(CryptoJS.enc.Utf8);
+}
+
+function readFile() {
+    if (this.files && this.files[0]) {
+        
+        var FR= new FileReader();
+        
+        FR.addEventListener("load", function(e) {
+            b64 = e.target.result;
+            console.log(b64);
+        }); 
+        FR.readAsDataURL( this.files[0] );
+    }
+};
+document.getElementById("image-upload").addEventListener("change", readFile);
 
 function builMessage(message){
     $('.chat').append('<div class="alert alert-dark" role="alert">' + message + '</div>');
@@ -157,6 +190,7 @@ function recive(){
     conn.on('data', function (data) {
         console.log('recieved: ' + data);
         //builMessage(data);
+        var data = decryptMsg(data,other);
         $('.chat').append('<div class="alert alert-primary" role="alert">' + data + '</div>');
         const audio = document.getElementById("audio-recive");
         //audio.volume = 0.2;
@@ -191,8 +225,9 @@ $('.connect-peer').click(function(){
 });
 $('.send-msg').click(function(){
     var msg = $('.message').val();
+    var data = encryptMsg(msg,me);
     if (conn && conn.open) {
-        conn.send(msg);
+        conn.send(data);
         $('.chat').append('<div class="alert alert-success" role="alert">' + msg + '</div>');
         $('.message').val('');
         const audio = document.getElementById("audio-send");
@@ -202,6 +237,24 @@ $('.send-msg').click(function(){
         alert('connection closed');
     }
     
+});
+$('.send-image').click(function(){
+    if(b64 != ""){
+        var msg = '<img class="chat-img" src="' + b64 + '">';
+        var data = encryptMsg(msg,me);
+        if (conn && conn.open) {
+            conn.send(data);
+            $('.chat').append('<div class="alert alert-success" role="alert">' + msg + '</div>');
+            $('#image-upload').val('');
+            const audio = document.getElementById("audio-send");
+            //audio.volume = 0.2;
+            audio.play();
+        }else{
+            alert('connection closed');
+        }
+    }else{
+        alert('no image selected');
+    }
 });
 $('.call').click(function(){
     if (conn) {
