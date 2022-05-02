@@ -3,9 +3,10 @@ simple peer to peer text message and video call app with end to end encryption
 using node js
 
 Run server: 
-    ```sh
+    ``` sh
     $ npm install
     ```
-    ```sh
+    
+    ``` sh
     $ node server/bin.js
     ```
